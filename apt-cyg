@@ -112,6 +112,23 @@ The MIT License (MIT)
 Copyright (c) 2005-9 Stephen Jungels
 +
 
+mapfile resources <<+
+
+mirrors-lst
+	http://mirrors.163.com/cygwin/;mirrors.163.com;Asia;China
+	http://mirrors.ustc.edu.cn/cygwin/;mirrors.ustc.edu.cn;Asia;China
+	ftp://mirror.mcs.anl.gov/pub/cygwin/;mirror.mcs.anl.gov;United States;Illinois
+	http://mirror.mcs.anl.gov/cygwin/;mirror.mcs.anl.gov;United States;Illinois
+last-mirror
+	http://mirrors.163.com/cygwin/
+net-method
+	Direct
+last-action
+	Download,Install
+last-cache
+	/var/cache/setup
++
+
 function wget {
   if command wget -h &>/dev/null
   then
@@ -125,7 +142,12 @@ function wget {
 
 function find-workspace {
   # default working directory and mirror
-  
+
+  if [ ! -e /etc/setup/setup.rc ]
+  then
+    printf %s "${resources[@]}" > /etc/setup/setup.rc
+  fi
+
   # work wherever setup worked last, if possible
   cache=$(awk '
   /last-cache/ {
