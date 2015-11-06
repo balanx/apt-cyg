@@ -167,6 +167,13 @@ function find-workspace {
   s : %3a g
   ' <<< "$mirror")
 
+  if [ -e /etc/postinstall/postinstall.db ]
+  then
+    mv -f /etc/postinstall/postinstall.db /etc/postinstall/postinstall.db.save
+  fi
+
+  #touch /etc/postinstall/postinstall.db
+
   mkdir -p "$cache/$mirrordir/$arch"
   cd "$cache/$mirrordir/$arch"
   if [ -e setup.ini ]
@@ -449,10 +456,10 @@ function apt-searchall {
 }
 
 function apt-install {
-  check-packages
-  find-workspace
-  local pkg dn bn requires wr package sbq script
-  for pkg in "${pks[@]}"
+  #check-packages
+  #find-workspace
+  local pkg dn bn requires bad package sbq script
+  for pkg in $*
   do
 
   if grep -q "^$pkg " /etc/setup/installed.db
@@ -470,58 +477,78 @@ function apt-install {
   cd "$cache/$mirrordir/$dn"
   tar -x -C / -f $bn
   # update the package database
+  echo $pkg $bn >> /etc/postinstall/postinstall.db
 
-  awk '
-  ins != 1 && pkg < $1 {
-    print pkg, bz, 0
-    ins = 1
-  }
-  1
-  END {
-    if (ins != 1) print pkg, bz, 0
-  }
-  ' pkg="$pkg" bz=$bn /etc/setup/installed.db > /tmp/awk.$$
-  mv /etc/setup/installed.db /etc/setup/installed.db-save
-  mv /tmp/awk.$$ /etc/setup/installed.db
 
   [ -z nodeps ] && continue
   # recursively install required packages
 
   requires=$(awk '$1=="requires", $0=$2' FS=': ' desc)
   cd ~-
-  wr=0
+  bad=0
   if [[ $requires ]]
   then
     echo Package $pkg requires the following packages, installing:
     echo $requires
     for package in $requires
     do
-      if grep -q "^$package " /etc/setup/installed.db
-      then
-        echo Package $package is already installed, skipping
-        continue
-      fi
-      apt-cyg install --noscripts $package || (( wr++ ))
+      apt-install $package || (( bad++ ))
     done
   fi
-  if (( wr ))
+  if (( bad ))
   then
     echo some required packages did not install, continuing
   fi
 
-  # run all postinstall scripts
-
-  [ -z noscripts ] && continue
-  find /etc/postinstall -name '*.sh' | while read script
-  do
-    echo Running $script
-    $script
-    mv $script $script.done
-  done
   echo Package $pkg installed
+  done
+}
+
+
+dbmod () {
+
+  local pkg file line
+
+  [ ! -f /etc/postinstall/postinstall.db ] && return
+  echo update database
+
+  cat /etc/postinstall/postinstall.db | while read line
+  do
+
+    pkg=`echo "$line" | awk -F ' ' '{print $1}'`
+    file=`echo "$line" | awk -F ' ' '{print $2}'`
+    #echo $pkg $file
+
+    # update the package database
+    # delete old
+    cat /etc/setup/installed.db | awk > /tmp/awk.$$ -v pkg="$pkg" '{if (pkg != $1) print $0}'
+    mv /tmp/awk.$$ /etc/setup/installed.db
+
+    # insert new
+    cat /etc/setup/installed.db | awk > /tmp/awk.$$ -v pkg="$pkg" -v bz=$file \
+      '{if (ins != 1 && pkg < $1) {print pkg " " bz " 0"; ins=1}; print $0} \
+       END{if (ins != 1) print pkg " " bz " 0"}'
+    mv /tmp/awk.$$ /etc/setup/installed.db
 
   done
 }
+
+apt-postinstall () {
+
+  echo run all postinstall scripts
+
+  #find /etc/postinstall -name '*.sh' | while read script
+  ls -1 /etc/postinstall/*.sh 2> /dev/null | while read script
+  do
+    echo Running $script
+    mv $script $script.done
+  done
+
+  dbmod
+  echo
+  echo All installation finished
+}
+
 
 function apt-remove {
   check-packages
@@ -680,7 +707,15 @@ set -a
 if type -t apt-$command | grep -q function
 then
   readonly arch=${HOSTTYPE/i6/x}
-  apt-$command
+  if [[ $command = install ]]
+  then
+    check-packages
+    find-workspace
+    apt-install "${pks[@]}"
+    apt-postinstall
+  else
+    apt-$command
+  fi
 else
   printf %s "${usage[@]}"
 fi
