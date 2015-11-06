@@ -41,6 +41,9 @@ OPERATIONS
   install
     Install package(s).
 
+  upgrade
+    upgrade package(s).
+
   remove
     Remove package(s) from the system.
 

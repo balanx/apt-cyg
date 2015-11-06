@@ -1,3 +1,23 @@
+what's new
+=======
+fork from 'https://github.com/transcode-open/apt-cyg' (commit 395caa566, on Sep 7)
+
+to 'https://github.com/balanx/apt-cyg'
+
+2015-11-6
+
+add command 'upgrade', and scrip 'postinstall'.
+
+say bye-bye with the problem like,
+
+        3004094 [main] bash 7712 fork: child -1 - forked process 4840 died unexpectedly, retry 0, exit code 0xC0000005, errno 11
+        ./apt-cyg: fork: retry: Resource temporarily unavailable
+
+        2 [main] bash 7556 child_info_fork::abort: F:\Cygwin\bin\cygncursesw-10.dll: Loaded to different address: parent(0x6F7A0000) != child(0x6DF00000)
+        ./apt-cyg: fork: retry: Resource temporarily unavailable
+
+-------
+
 apt-cyg
 =======
 
@@ -10,6 +30,9 @@ Operations
 ~~~
 install
   Install package(s).
+
+upgrade
+  upgrade package(s).
 
 remove
   Remove package(s) from the system.
@@ -61,8 +84,9 @@ Quick start
 
 apt-cyg is a simple script. To install:
 
-    lynx -source rawgit.com/transcode-open/apt-cyg/master/apt-cyg > apt-cyg
-    install apt-cyg /bin
+    $ install apt-cyg /bin
+    $ install postinstall /bin
+    $ cp postinstall.bat /
 
 Example use of apt-cyg:
 
