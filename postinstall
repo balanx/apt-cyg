@@ -1,0 +1,64 @@
+#!/bin/dash
+# postinstall : Additional tool with apt-cyg
+#
+# The MIT License (MIT)
+#
+# Copyright (c) 2015 github.com/balanx/
+#
+
+dbmod () {
+
+  local pkg file line
+
+  echo update database
+
+  cat /etc/postinstall/postinstall.db | while read line
+  do
+
+    pkg=`echo "$line" | awk -F ' ' '{print $1}'`
+    file=`echo "$line" | awk -F ' ' '{print $2}'`
+    file=${file##*/}
+    echo $pkg
+
+    # update the package database
+    # delete old
+    cat /etc/setup/installed.db | \
+        awk > /tmp/awk.$$ -v pkg="$pkg" '{if (pkg != $1) print $0}'
+    mv /tmp/awk.$$ /etc/setup/installed.db
+
+    # insert new
+    cat /etc/setup/installed.db | awk > /tmp/awk.$$ -v pkg="$pkg" -v bz=$file \
+      '{if (ins != 1 && pkg < $1) {print pkg " " bz " 0"; ins=1}; print $0} \
+       END{if (ins != 1) print pkg " " bz " 0"}'
+    mv /tmp/awk.$$ /etc/setup/installed.db
+
+  done
+}
+
+postsh () {
+
+  if [ ! -f /etc/postinstall/postinstall.db ]
+  then
+      echo NO package upgrade
+      return
+  fi
+
+  echo run all postinstall scripts
+
+  #find /etc/postinstall -name '*.sh' | while read script
+  ls -1 /etc/postinstall/*.sh 2> /dev/null | while read script
+  do
+    echo Running $script
+    mv $script $script.done
+  done
+
+  dbmod
+  echo
+  echo All installation finished
+}
+
+export PATH=/bin
+
+postsh
+
+read -p "Press any key to exit ..."  Key

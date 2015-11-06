@@ -527,7 +527,7 @@ dbmod () {
     pkg=`echo "$line" | awk -F ' ' '{print $1}'`
     file=`echo "$line" | awk -F ' ' '{print $2}'`
     file=${file##*/}
-    #echo $pkg $file
+    echo $pkg
 
     # update the package database
     # delete old
