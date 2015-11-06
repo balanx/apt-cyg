@@ -509,7 +509,6 @@ dbmod () {
 
   local pkg file line
 
-  [ ! -f /etc/postinstall/postinstall.db ] && return
   echo update database
 
   cat /etc/postinstall/postinstall.db | while read line
@@ -517,11 +516,13 @@ dbmod () {
 
     pkg=`echo "$line" | awk -F ' ' '{print $1}'`
     file=`echo "$line" | awk -F ' ' '{print $2}'`
+    file=${file##*/}
     #echo $pkg $file
 
     # update the package database
     # delete old
-    cat /etc/setup/installed.db | awk > /tmp/awk.$$ -v pkg="$pkg" '{if (pkg != $1) print $0}'
+    cat /etc/setup/installed.db | \
+        awk > /tmp/awk.$$ -v pkg="$pkg" '{if (pkg != $1) print $0}'
     mv /tmp/awk.$$ /etc/setup/installed.db
 
     # insert new
@@ -534,6 +535,12 @@ dbmod () {
 }
 
 apt-postinstall () {
+
+  if [ ! -f /etc/postinstall/postinstall.db ]
+  then
+      echo NO package upgrade
+      return
+  fi
 
   echo run all postinstall scripts
 
@@ -549,6 +556,79 @@ apt-postinstall () {
   echo All installation finished
 }
 
+function apt-upgrade {
+
+  local pkg dn bn requires n old new install
+
+  find-workspace
+  check-packages
+
+  rm -f /etc/postinstall/postinstall.db
+  touch /etc/postinstall/postinstall.db
+
+  rm -fr $cache/postinstall
+  mkdir -p "$cache/postinstall"
+
+  requires=">"
+  for pkg in `apt-depends`
+  do
+    if [[ ! "$requires" =~ "$pkg" ]]
+    then
+      requires=$requires" "$pkg
+    fi
+  done
+
+  # delete ">"
+  requires=${requires:2}
+
+  n=0
+  for pkg in $requires
+  do
+
+  cd "$cache/$mirrordir/$arch"
+  # old package
+  old=`cat "/etc/setup/installed.db" | \
+      awk -v pat="$pkg" '$1==pat {$1=""; printf $2}'`
+
+  # new package
+  install=`cat "setup.ini" | \
+       awk -v pat="@ $pkg" \
+      'BEGIN{i=0} $0==pat {i=1} /^install: /&&(i==1){printf $2; exit}'`
+  new=${install##*/}
+
+  # if NOT installed or newer
+  echo
+  if [[ "-$old-" = "-$new-" ]]
+  then
+    echo $new "   newest, skipping"
+    continue
+  else
+    echo $old " -> " $new
+    (( n++ ))
+  fi
+
+
+  echo Installing $pkg
+  echo
+
+  download $pkg
+  read dn bn </tmp/dwn
+  echo Unpacking...
+
+  cd "$cache/$mirrordir/$dn"
+  tar -x -C $cache/postinstall -f $bn
+
+  echo $pkg $install >> /etc/postinstall/postinstall.db
+
+  echo Package $pkg installed
+  done
+
+  echo
+  echo Total $n
+
+  [ $n -ne 0 ] && \
+  echo You MUST exit all running shell, then run 'postinstall.bat' to bring into effect !
+}
 
 function apt-remove {
   check-packages
@@ -684,6 +764,7 @@ do
     ;;
 
     list | cache  | remove | depends | listall  | download | listfiles |\
+    upgrade | postinstall |\
     show | mirror | search | install | category | rdepends | searchall )
       if [[ $command ]]
       then
