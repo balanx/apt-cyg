@@ -129,6 +129,15 @@ last-cache
 	/var/cache/setup
 +
 
+mapfile postinstallmsg <<+
+
+********************************************
+To bring into effect,
+you MUST exit all running shell !!
+then run 'postinstall.bat' in Windows OS.
+********************************************
++
+
 function wget {
   if command wget -h &>/dev/null
   then
@@ -628,7 +637,7 @@ function apt-upgrade {
   echo Total $n
 
   [ $n -ne 0 ] && \
-  echo You MUST exit all running shell, then run 'postinstall.bat' to bring into effect !
+  printf %s "${postinstallmsg[@]}"
 }
 
 function apt-remove {
