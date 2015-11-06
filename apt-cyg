@@ -149,12 +149,13 @@ function find-workspace {
   fi
 
   # work wherever setup worked last, if possible
-  cache=$(awk '
-  /last-cache/ {
-    getline
-    print $1
-  }
-  ' /etc/setup/setup.rc)
+  cache=/var/cache/setup
+  #cache=$(awk '
+  #/last-cache/ {
+  #  getline
+  #  print $1
+  #}
+  #' /etc/setup/setup.rc)
 
   mirror=$(awk '
   /last-mirror/ {
