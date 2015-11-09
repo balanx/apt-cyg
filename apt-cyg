@@ -493,10 +493,15 @@ function apt-searchall {
 }
 
 function apt-install {
-  #check-packages
-  #find-workspace
-  local pkg dn bn requires bad package sbq script
-  for pkg in $*
+  check-packages
+  find-workspace
+  local pkg dn bn requires
+
+  requires=`apt-cyg depends --noscripts "${pks[@]}"`
+  echo Totally require the following packages :
+  echo $requires
+
+  for pkg in $requires
   do
 
   if grep -q "^$pkg " /etc/setup/installed.db
@@ -504,9 +509,10 @@ function apt-install {
     echo Package $pkg is already installed, skipping
     continue
   fi
-  (( sbq++ )) && echo
+  echo
   echo Installing $pkg
 
+  cd "$cache/$mirrordir/$arch"
   download $pkg
   read dn bn </tmp/dwn
   echo Unpacking...
@@ -516,29 +522,10 @@ function apt-install {
   # update the package database
   echo $pkg $bn >> /etc/postinstall/postinstall.db
 
-
-  [ -z nodeps ] && continue
-  # recursively install required packages
-
-  requires=$(awk '$1=="requires", $0=$2' FS=': ' desc)
-  cd ~-
-  bad=0
-  if [[ $requires ]]
-  then
-    echo Package $pkg requires the following packages, installing:
-    echo $requires
-    for package in $requires
-    do
-      apt-install $package || (( bad++ ))
-    done
-  fi
-  if (( bad ))
-  then
-    echo some required packages did not install, continuing
-  fi
-
   echo Package $pkg installed
   done
+
+  apt-postinstall
 }
 
 
@@ -825,15 +812,7 @@ set -a
 if type -t apt-$command | grep -q function
 then
   readonly arch=${HOSTTYPE/i6/x}
-  if [[ $command = install ]]
-  then
-    check-packages
-    find-workspace
-    apt-install "${pks[@]}"
-    apt-postinstall
-  else
-    apt-$command
-  fi
+  apt-$command
 else
   printf %s "${usage[@]}"
 fi
