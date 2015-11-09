@@ -309,9 +309,10 @@ function apt-show {
 function apt-depends {
   find-workspace
   check-packages
+  local t depends_tree depends
   for pkg in "${pks[@]}"
   do
-    awk '
+    t=`awk '
     @include "join"
     $1 == "@" {
       apg = $2
@@ -337,8 +338,31 @@ function apt-depends {
           prpg(reqs[fpg][each])
       delete spath[length(spath)]
     }
-    ' setup.ini
+    ' setup.ini`
+
+    # don't echo tree, if 'noscripts'
+    if [ -v noscripts ]
+    then
+      depends_tree=$depends_tree$t
+    else
+      echo "$t"
+    fi
+
   done
+
+  if [ -v noscripts ]
+  then
+    depends=">"
+    for t in $depends_tree
+    do
+      if [[ ! "$depends" =~ "$t" ]]
+      then
+        depends=$depends" "$t
+      fi
+    done
+
+    echo ${depends:2}
+  fi
 }
 
 function apt-rdepends {
