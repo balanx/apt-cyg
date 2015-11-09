@@ -593,14 +593,9 @@ function apt-upgrade {
   rm -fr $cache/postinstall
   mkdir -p "$cache/postinstall"
 
-  requires=">"
-  for pkg in `apt-depends`
-  do
-    if [[ ! "$requires" =~ "$pkg" ]]
-    then
-      requires=$requires" "$pkg
-    fi
-  done
+  requires=`apt-cyg depends --noscripts "${pks[@]}"`
+  echo Totally require the following packages :
+  echo $requires
 
   # delete ">"
   requires=${requires:2}
