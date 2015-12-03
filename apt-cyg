@@ -123,7 +123,7 @@ mirrors-lst
 	ftp://mirror.mcs.anl.gov/pub/cygwin/;mirror.mcs.anl.gov;United States;Illinois
 	http://mirror.mcs.anl.gov/cygwin/;mirror.mcs.anl.gov;United States;Illinois
 last-mirror
-	http://mirrors.163.com/cygwin/
+	http://mirrors.ustc.edu.cn/cygwin/
 net-method
 	Direct
 last-action
@@ -361,6 +361,7 @@ function apt-depends {
       fi
     done
 
+    # delete ">"
     echo ${depends:2}
   fi
 }
@@ -597,9 +598,6 @@ function apt-upgrade {
   echo Totally require the following packages :
   echo $requires
 
-  # delete ">"
-  requires=${requires:2}
-
   n=0
   for pkg in $requires
   do
@@ -617,7 +615,12 @@ function apt-upgrade {
 
   # if NOT installed or newer
   echo
-  if [[ "-$old-" = "-$new-" ]]
+
+  if [[ "--" = "-$new-" ]]
+  then
+    echo "Can't find package $pkg"
+    exit 1
+  elif [[ "-$old-" = "-$new-" ]]
   then
     echo $new "   newest, skipping"
     continue
